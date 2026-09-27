@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 两个定位 SDK 所需的权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+
+    <application
+        android:name="com.tiger.locationverify.App"
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LocationVerify">
+
+        <!-- 高德定位 SDK 组件（必需，缺失会导致错误码 10） -->
+        <service android:name="com.amap.api.location.APSService" />
+
+        <!-- 百度定位 SDK 组件（必需；官方文档要求 remote 进程） -->
+        <service
+            android:name="com.baidu.location.f"
+            android:enabled="true"
+            android:process=":remote" />
+
+        <!--
+            Key 占位符默认留空即可：应用内「配置密钥」填写的 Key 通过代码设置，
+            优先级高于 Manifest（百度 LocationClient.setKey / 高德 AMapLocationClient.setApiKey）。
+        -->
+        <meta-data
+            android:name="com.baidu.lbsapi.API_KEY"
+            android:value="${BAIDU_AK}" />
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="${AMAP_API_KEY}" />
+
+        <activity
+            android:name="com.tiger.locationverify.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.tiger.locationverify.consent.ConsentActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="com.tiger.locationverify.keys.KeyConfigActivity"
+            android:exported="false" />
+    </application>
+
+</manifest>
