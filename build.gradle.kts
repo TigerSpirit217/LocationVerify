@@ -1,5 +1,15 @@
 // 顶层构建文件
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // AGP 内置 Kotlin；显式统一编译器版本，无需 kotlin-android 插件。
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20")
+    }
+}
+
 plugins {
-    id("com.android.application") version "8.5.2" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+    id("com.android.application") version "9.4.1" apply false
 }

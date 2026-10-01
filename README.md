@@ -11,23 +11,26 @@
 首次打开 ──► 功能介绍 + 授权提示（隐私合规，请阅读后勾选同意）
                 │ 同意
                 ▼
-        填写密钥（百度 AK + 高德 Key，至少其一，与包名/SHA1 绑定）
+        填写密钥（百度 AK + 高德 Key + 腾讯 Key，至少其一，与包名/SHA1 绑定）
                 │
                 ▼
-        主界面：百度 SDK 结果 与 高德 SDK 结果
+        主界面：上=百度 / 中=高德 / 下=腾讯
                 │ 点击「开始检测」
                 ▼
         ① 先运行百度 SDK 单次定位（最长 15s，超时自动结束）
-                │ 完成（成功/失败/超时）
+                │ 完成（成功/失败/超时/跳过）
                 ▼
         ② 再运行高德 SDK 单次定位（最长 15s）
                 │
                 ▼
-        两区分别展示返回值与虚拟位置风险结论
+        ③ 最后运行腾讯定位 SDK 单次定位（最长 15s）
+                │
+                ▼
+        三个分区分别展示返回值与虚拟位置风险结论（未配置 Key 的 SDK 自动跳过）
 ```
 
-- 首次打开弹出「功能介绍与授权说明」：列明两个 SDK 采集的信息与用途，附双方隐私政策链接；未同意则退出应用。
-- 允许只填一个 Key：仅当两个 Key 都未填写时，「开始检测」才会跳转到密钥配置页；只填其一时，未填写 Key 的 SDK 自动跳过（对应区域显示「已跳过」），不会初始化该 SDK。
+- 首次打开弹出「功能介绍与授权说明」：列明三个 SDK 采集的信息与用途，附三家隐私政策链接；未同意则退出应用。
+- 允许只填部分 Key：仅当三个 Key 都未填写时，「开始检测」才会跳转到密钥配置页；未填写 Key 的 SDK 自动跳过（对应区域显示「已跳过」），不会初始化该 SDK。
 - 检测日志自动写入应用内部存储（`/data/data/com.tiger.locationverify/files/logs/`，无需存储权限），主界面可查看、清空。
 
 ## 2. 虚拟位置检测原理（核心）
@@ -74,18 +77,32 @@
 > 关键配置：`AMapLocationClientOption.setMockEnable(true)`。
 > 本工具开启允许模拟，以获得带 `isMock` 标记的结果；同时兼容处理错误码 15（模拟被拦截）的情况。
 
+### 腾讯（TencentLocationSdk-openplatform 7.6.1.9）
+
+| 返回字段 | 含义 |
+| --- | --- |
+| `TencentLocation.isMockGps()` | **该 GPS 点是否为 Mock 数据**：1=是 / 0=否 / -1=无法判断（仅当 provider 为 GPS 来源时有效） |
+| `TencentLocation.getFakeProbability()` | **作弊可能性**（0~1，需开启反作弊模块后有效） |
+| `TencentLocation.getFakeReason()` | 作弊原因码（当 `getSourceProvider()` 返回 `FAKE` 时有意义，可能为多种原因组合） |
+| `TencentLocation.getSourceProvider()` | 细分定位来源；出现 `FAKE` 即 SDK 判定该结果为作弊 |
+| `TencentLocation.getProvider()` | 粗分来源：`GPS_PROVIDER` / `BEIDOU_PROVIDER` / `NETWORK_PROVIDER` / `CELL_PROVIDER` / `COARSE_PROVIDER` |
+
+> 关键配置（缺一不可）：
+> 1. `TencentLocationManager.setMockEnable(true)` —— 默认会**过滤 mockGPS 数据**，开启后才能收到 mock 结果并以 `isMockGps()` 标记；
+> 2. `TencentLocationRequest.setEnableAntiMock(true)` —— **反作弊模块默认关闭**（7.5.4.8+ 提供），开启后才能通过 `getFakeProbability()` / `getFakeReason()` 获取作弊判定。
+
 ### 风险结论映射
 
-| 等级 | 百度 | 高德 |
-| --- | --- | --- |
-| 高风险 | 作弊概率 HIGH，或虚假点与真实点距离 > 0 | `isMock = true`，或错误码 15 |
-| 中风险 | 作弊概率 MIDDLE | — |
-| 低风险 | 作弊概率 LOW / ZERO | `isMock = false` 且定位成功 |
-| 无法判断 | 概率未知或定位失败 | 定位失败（除 15 外） |
+| 等级 | 百度 | 高德 | 腾讯 |
+| --- | --- | --- | --- |
+| 高风险 | 作弊概率 HIGH，或虚假点与真实点距离 > 0 | `isMock = true`，或错误码 15 | `isMockGps=1`、细分来源为 `FAKE`，或作弊概率 ≥ 0.6 |
+| 中风险 | 作弊概率 MIDDLE | — | 作弊概率 0~0.6（疑似） |
+| 低风险 | 作弊概率 LOW / ZERO | `isMock = false` 且定位成功 | `isMockGps=0` / 概率 0，未检出模拟 |
+| 无法判断 | 概率未知或定位失败 | 定位失败（除 15 外） | `isMockGps=-1` 或定位失败 |
 
 ## 3. Key 申请（使用前必须）
 
-两个 Key 都绑定 **包名 `com.tiger.locationverify` + 签名 SHA1**（至少填写一个即可使用，未填写的 SDK 自动跳过）。调试与发布用的签名不同，请分别配置。
+三个 Key 都绑定 **包名 `com.tiger.locationverify` + 签名 SHA1**（至少填写一个即可使用，未填写的 SDK 自动跳过）。调试与发布用的签名不同，请分别配置。
 
 获取签名 SHA1（Android 签名）：
 
@@ -110,6 +127,12 @@ keytool -v -list -keystore 您的keystore文件路径
 2. 添加 **Android 平台** Key：填写包名 `com.tiger.locationverify` 与 SHA1；
 3. 生成后复制 Key。
 
+### 腾讯 Key
+
+1. 打开 [腾讯位置服务控制台](https://lbs.qq.com/dev/console/application/mine)，创建应用并勾选使用条款；
+2. 仅使用定位功能时无需额外设置，创建即得 Key；
+3. 复制 Key（本应用支持代码动态设置：`TencentLocationManagerOptions.setKey(key)`）。
+
 ### 在应用内填写
 
 打开应用 → 右上角「配置密钥」→ 粘贴（至少其一）→ 保存。
@@ -120,9 +143,10 @@ keytool -v -list -keystore 您的keystore文件路径
 两家 SDK 官方都支持**运行时设置 Key**，本应用即采用该方式（无需改代码重新打包）：
 
 - 百度：`LocationClient.setKey(ak)`（每次检测前调用，优先于 Manifest meta-data）；
-- 高德：`AMapLocationClient.setApiKey(key)`（必须在实例化 `AMapLocationClient` 之前调用，每次检测前调用）。
+- 高德：`AMapLocationClient.setApiKey(key)`（必须在实例化 `AMapLocationClient` 之前调用，每次检测前调用）；
+- 腾讯：`TencentLocationManagerOptions.setKey(key)`（每次检测前调用，优先于 Manifest meta-data）。
 
-`AndroidManifest.xml` 中的两个 `meta-data` 以 `${BAIDU_AK}` / `${AMAP_API_KEY}` 占位（默认空串），也可在 `app/build.gradle.kts` 的 `manifestPlaceholders` 里改为硬编码。
+`AndroidManifest.xml` 中的三个 `meta-data` 以 `${BAIDU_AK}` / `${AMAP_API_KEY}` / `${TENCENT_KEY}` 占位（默认空串），也可在 `app/build.gradle.kts` 的 `manifestPlaceholders` 里改为硬编码。
 
 ## 4. 软件使用
 
@@ -139,10 +163,10 @@ keytool -v -list -keystore 您的keystore文件路径
 LocationVerify/
 ├── build.gradle.kts / settings.gradle.kts / gradle.properties   # Gradle 配置（含百度官方 Maven 仓库）
 └── app/
-    ├── build.gradle.kts            # 依赖：百度定位 9.7.0、高德定位 11.3.000
-    ├── proguard-rules.pro          # 两个 SDK 的混淆 keep 规则
+    ├── build.gradle.kts            # 依赖：百度定位 9.7.0、高德定位 11.3.000、腾讯定位 7.6.1.9
+    ├── proguard-rules.pro          # 三个 SDK 的混淆 keep 规则
     └── src/main/
-        ├── AndroidManifest.xml     # 权限 + 两个 SDK 必需的 service + Key 占位 meta-data
+        ├── AndroidManifest.xml     # 权限 + 各 SDK 必需组件 + Key 占位 meta-data
         ├── java/com/tiger/locationverify/
         │   ├── App.kt                          # 隐私合规开关初始化
         │   ├── MainActivity.kt                 # 双区结果主界面、顺序检测编排、权限
@@ -150,22 +174,25 @@ LocationVerify/
         │   ├── keys/KeyConfigActivity.kt       # 用户自行填写 Key
         │   ├── data/Prefs.kt                   # SharedPreferences 持久化
         │   ├── util/LogSaver.kt                # 本地日志（应用内部存储）
-        │   └── location/
+        │       └── location/
         │       ├── CheckReport.kt              # 报告模型 + 风险等级
         │       ├── BaiduLocationChecker.kt     # 百度 SDK 检测器
-        │       └── AmapLocationChecker.kt      # 高德 SDK 检测器
+        │       ├── AmapLocationChecker.kt      # 高德 SDK 检测器
+        │       └── TencentLocationChecker.kt   # 腾讯定位 SDK 检测器
         └── res/                                 # 布局、字符串、颜色、主题、图标
 ```
 
 ## 6. 隐私合规
 
-- 两个 SDK 均要求在使用前按用户同意结果设置合规开关：
+- 三个 SDK 均要求在使用前按用户同意结果设置合规开关：
   - 百度：`LocationClient.setAgreePrivacy(boolean)`（实例化客户端之前）；
-  - 高德：`AMapLocationClient.updatePrivacyShow(context, true, true)` + `updatePrivacyAgree(context, hasAgree, true)`（调用 SDK 任何接口之前）。
-- 首次启动引导页收集用户的同意决定并持久化，`App.onCreate` 与同意动作发生时会即时同步给两个 SDK；未同意时无法进入主界面、也不会创建任何定位客户端。
+  - 高德：`AMapLocationClient.updatePrivacyShow(context, true, true)` + `updatePrivacyAgree(context, hasAgree, true)`（调用 SDK 任何接口之前）；
+  - 腾讯：`TencentLocationManager.setUserAgreePrivacy(boolean)`（构造 `TencentLocationManager` 实例及调用任何定位接口之前，7.4.6+ 强制）。
+- 首次启动引导页收集用户的同意决定并持久化，`App.onCreate` 与同意动作发生时会即时同步给三个 SDK；未同意时无法进入主界面、也不会创建任何定位客户端。
 - 隐私政策：
   - 百度：https://lbsyun.baidu.com/index.php?title=openprivacy
   - 高德：https://lbs.amap.com/pages/privacy/
+  - 腾讯：https://privacy.qq.com/document/preview/dbd484ce652c486cb6d7e43ef12cefb0
 
 ## 7. 常见问题
 
@@ -177,12 +204,16 @@ LocationVerify/
 | 高德错误码 12 | 未授予定位权限                                                                              |
 | 高德错误码 15 | SDK 判定结果为模拟位置（若未开启 setMockEnable 就会走此路径，属“检出”信号）                                     |
 | 高德日志 type=5 | Wifi 定位结果（网络定位），正常现象；type 随环境（GPS/Wi-Fi/基站/权限）自动变化，见「定位类型对照表」                        |
+| 腾讯定位失败/无回调 | 确认已调用 `setUserAgreePrivacy(true)`（7.4.6+ 必须）；确认 Key 与控制台一致；ERROR_USAGE_RESTRICTED 为用量受限                    |
+| 腾讯 isMockGps 返回 -1 | 正常：仅 GPS 来源时才能判定是否 Mock，网络定位来源下恒为 -1                                                                 |
+| 腾讯反作弊字段全为 0 | `setEnableAntiMock(true)` 未开启或未命中反作弊策略；确认 SDK ≥ 7.5.4.8                                                    |
 | 两个 SDK 都超时 | 检查网络、定位开关、WI-Fi 是否可用；室内且无网络信号时可能无法定位                                                 |
 | 百度升级 SDK 后无法定位 | 新版可能变更 service 组件名（本工程使用官方要求的 `com.baidu.location.f`），以新版官方文档为准                      |
 
 ## 8. 局限性说明
 
-- 检测能力完全取决于 SDK 版本与厂商策略：本工程基于百度 9.7.0 / 高德 11.3.000 的公开接口编写，升级 SDK 时接口可能变化（如百度 mock 相关字段为 9.x 新增）。
+- 检测能力完全取决于 SDK 版本与厂商策略：本工程基于百度 9.7.0 / 高德 11.3.000 / 腾讯 7.6.1.9 的公开接口编写，升级 SDK 时接口可能变化。
 - 部分模拟定位方案（如系统级虚拟化、深度 Hook）可能绕过以上字段，检测结果不代表绝对可靠。
 - 百度在网络定位（非 GNSS）场景下不提供作弊概率字段，此时提示“无法判断”属正常。
+- 腾讯 `isMockGps()` 仅对 GPS 来源有效；反作弊模块（`setEnableAntiMock`）为 7.5.4.8+ 新增能力，且默认关闭，旧版本或未开启时相关字段无意义。
 - 本仓库未内置 `gradle/wrapper/gradle-wrapper.jar`，请用 Android Studio 打开（会自动补全）或自行生成 wrapper。

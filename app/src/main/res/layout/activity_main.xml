@@ -67,7 +67,7 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
-    <!-- 上下两区检测结果 -->
+    <!-- 百度、高德、腾讯三区检测结果 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -117,6 +117,30 @@
 
             <TextView
                 android:id="@+id/tv_amap_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_card"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="3dp"
+                android:minHeight="160dp"
+                android:padding="12dp"
+                android:text="@string/zone_placeholder"
+                android:textColor="@color/text_main"
+                android:textIsSelectable="true"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/zone_tencent_title"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_tencent_result"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"

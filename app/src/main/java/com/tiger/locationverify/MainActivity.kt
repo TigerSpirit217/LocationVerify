@@ -18,22 +18,26 @@ import com.tiger.locationverify.keys.KeyConfigActivity
 import com.tiger.locationverify.location.AmapLocationChecker
 import com.tiger.locationverify.location.BaiduLocationChecker
 import com.tiger.locationverify.location.RiskLevel
+import com.tiger.locationverify.location.TencentLocationChecker
 import com.tiger.locationverify.location.buildText
 import com.tiger.locationverify.util.LogSaver
+import com.tiger.locationverify.util.applySystemBarInsets
 
 /**
- * 主界面：上下两区分别展示百度地图 SDK 与高德地图 SDK 的检测结果。
- * 检测流程：先百度、后高德，各自结果实时渲染到对应区域。
+ * 主界面：从上到下三个区域分别展示百度地图 SDK、高德地图 SDK、腾讯定位 SDK 的检测结果。
+ * 检测流程：先百度、再高德、后腾讯，各自结果实时渲染到对应区域；未配置 Key 的 SDK 自动跳过。
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvKeyState: TextView
     private lateinit var tvBaiduResult: TextView
     private lateinit var tvAmapResult: TextView
+    private lateinit var tvTencentResult: TextView
     private lateinit var btnStart: Button
 
     private lateinit var baiduChecker: BaiduLocationChecker
     private lateinit var amapChecker: AmapLocationChecker
+    private lateinit var tencentChecker: TencentLocationChecker
     private var running = false
 
     private val permissionLauncher = registerForActivityResult(
@@ -53,14 +57,17 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        applySystemBarInsets()
 
         tvKeyState = findViewById(R.id.tv_key_state)
         tvBaiduResult = findViewById(R.id.tv_baidu_result)
         tvAmapResult = findViewById(R.id.tv_amap_result)
+        tvTencentResult = findViewById(R.id.tv_tencent_result)
         btnStart = findViewById(R.id.btn_start)
 
         baiduChecker = BaiduLocationChecker(applicationContext)
         amapChecker = AmapLocationChecker(applicationContext)
+        tencentChecker = TencentLocationChecker(applicationContext)
 
         btnStart.setOnClickListener { onStartCheckClick() }
         findViewById<Button>(R.id.btn_config_keys).setOnClickListener {
@@ -91,23 +98,26 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         baiduChecker.release()
         amapChecker.release()
+        tencentChecker.release()
     }
 
     private fun refreshKeyState() {
-        val bOk = Prefs.getBaiduAk(this).isNotBlank()
-        val aOk = Prefs.getAmapKey(this).isNotBlank()
         tvKeyState.text = getString(
             R.string.key_state,
-            if (bOk) getString(R.string.filled) else getString(R.string.not_filled),
-            if (aOk) getString(R.string.filled) else getString(R.string.not_filled)
+            if (Prefs.getBaiduAk(this).isNotBlank()) getString(R.string.filled) else getString(R.string.not_filled),
+            if (Prefs.getAmapKey(this).isNotBlank()) getString(R.string.filled) else getString(R.string.not_filled),
+            if (Prefs.getTencentKey(this).isNotBlank()) getString(R.string.filled) else getString(R.string.not_filled)
         )
     }
 
     private fun onStartCheckClick() {
         if (running) return
-        // 允许只填一个 Key：仅当两个 Key 都未填写时才引导去配置页；
-        // 只填一个时，未填写 Key 的 SDK 会在其检测器中自动跳过（NO_KEY），不初始化。
-        if (Prefs.getBaiduAk(this).isBlank() && Prefs.getAmapKey(this).isBlank()) {
+        // 允许只填部分 Key：仅当三个 Key 都未填写时才引导去配置页；
+        // 未填写 Key 的 SDK 会在其检测器中自动跳过（NO_KEY），不初始化。
+        if (Prefs.getBaiduAk(this).isBlank() &&
+            Prefs.getAmapKey(this).isBlank() &&
+            Prefs.getTencentKey(this).isBlank()
+        ) {
             Toast.makeText(this, R.string.need_keys, Toast.LENGTH_LONG).show()
             startActivity(Intent(this, KeyConfigActivity::class.java))
             return
@@ -125,13 +135,14 @@ class MainActivity : AppCompatActivity() {
         startCheckSequence()
     }
 
-    /** 依次执行：先百度 SDK，回调完成后再执行高德 SDK */
+    /** 依次执行：先百度 SDK，再高德 SDK，最后腾讯 SDK */
     private fun startCheckSequence() {
         running = true
         btnStart.isEnabled = false
-        LogSaver.d("Flow", "开始检测：百度 → 高德")
+        LogSaver.d("Flow", "开始检测：百度 → 高德 → 腾讯")
         renderZone(tvBaiduResult, textWithStatus(getString(R.string.zone_baidu_running)))
         renderZone(tvAmapResult, textWithStatus(getString(R.string.zone_amap_waiting)))
+        renderZone(tvTencentResult, textWithStatus(getString(R.string.zone_tencent_waiting)))
 
         baiduChecker.start { report ->
             LogSaver.d("Flow", "百度完成: 风险=${report.risk.label} ${report.riskReason}")
@@ -141,8 +152,14 @@ class MainActivity : AppCompatActivity() {
             amapChecker.start { r ->
                 LogSaver.d("Flow", "高德完成: 风险=${r.risk.label} ${r.riskReason}")
                 renderZone(tvAmapResult, buildText(r), r.risk)
-                running = false
-                btnStart.isEnabled = true
+                if (isFinishing || isDestroyed) return@start
+                renderZone(tvTencentResult, textWithStatus(getString(R.string.zone_tencent_running)))
+                tencentChecker.start { rt ->
+                    LogSaver.d("Flow", "腾讯完成: 风险=${rt.risk.label} ${rt.riskReason}")
+                    renderZone(tvTencentResult, buildText(rt), rt.risk)
+                    running = false
+                    btnStart.isEnabled = true
+                }
             }
         }
     }

@@ -12,9 +12,23 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+        <!-- 应用自身的包名与签名 SHA-1（申请各家 Key 时都需要填写，长按可复制） -->
+        <TextView
+            android:id="@+id/tv_pkg_sha1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="3dp"
+            android:padding="12dp"
+            android:textColor="@color/text_main"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="@string/key_config_title"
             android:textColor="@color/text_main"
             android:textSize="20sp"
@@ -59,6 +73,30 @@
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card"
             android:hint="例如：xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            android:imeOptions="actionNext"
+            android:inputType="textNoSuggestions"
+            android:minHeight="48dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:singleLine="true"
+            android:textColor="@color/text_main"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/key_config_label_tencent"
+            android:textColor="@color/text_main"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_tencent_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:hint="例如：xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
             android:imeOptions="actionDone"
             android:inputType="textNoSuggestions"
             android:minHeight="48dp"

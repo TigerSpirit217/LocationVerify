@@ -12,6 +12,7 @@ object Prefs {
     private const val KEY_AGREED = "privacy_agreed"
     private const val KEY_BAIDU_AK = "baidu_ak"
     private const val KEY_AMAP_KEY = "amap_key"
+    private const val KEY_TENCENT_KEY = "tencent_key"
 
     private fun sp(context: Context) =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -31,10 +32,14 @@ object Prefs {
     fun getAmapKey(context: Context): String =
         sp(context).getString(KEY_AMAP_KEY, "") ?: ""
 
-    fun saveKeys(context: Context, baiduAk: String, amapKey: String) {
+    fun getTencentKey(context: Context): String =
+        sp(context).getString(KEY_TENCENT_KEY, "") ?: ""
+
+    fun saveKeys(context: Context, baiduAk: String, amapKey: String, tencentKey: String) {
         sp(context).edit()
             .putString(KEY_BAIDU_AK, baiduAk.trim())
             .putString(KEY_AMAP_KEY, amapKey.trim())
+            .putString(KEY_TENCENT_KEY, tencentKey.trim())
             .apply()
     }
 }

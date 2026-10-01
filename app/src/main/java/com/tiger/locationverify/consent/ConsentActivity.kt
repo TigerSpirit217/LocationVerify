@@ -10,9 +10,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.amap.api.location.AMapLocationClient
 import com.baidu.location.LocationClient
+import com.tencent.map.geolocation.TencentLocationManager
 import com.tiger.locationverify.MainActivity
 import com.tiger.locationverify.R
 import com.tiger.locationverify.data.Prefs
+import com.tiger.locationverify.util.applySystemBarInsets
 
 /**
  * 首次打开的介绍与授权页面：
@@ -24,6 +26,7 @@ class ConsentActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_consent)
+        applySystemBarInsets()
 
         val cbAgree = findViewById<CheckBox>(R.id.cb_agree)
         val btnAgree = findViewById<Button>(R.id.btn_agree)
@@ -39,9 +42,10 @@ class ConsentActivity : AppCompatActivity() {
 
         btnAgree.setOnClickListener {
             Prefs.setPrivacyAgreed(this, true)
-            // 立即将授权结果同步给两个 SDK 的合规开关（无需重启进程）
+            // 立即将授权结果同步给三个 SDK 的合规开关（无需重启进程）
             LocationClient.setAgreePrivacy(true)
             AMapLocationClient.updatePrivacyAgree(this, true)
+            TencentLocationManager.setUserAgreePrivacy(true)
             Toast.makeText(this, R.string.consent_saved, Toast.LENGTH_SHORT).show()
             goMain()
         }
