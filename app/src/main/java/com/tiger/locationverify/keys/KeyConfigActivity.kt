@@ -18,7 +18,7 @@ import java.security.MessageDigest
 /**
  * 密钥配置页：用户自行填写百度 AK、高德 Key 与腾讯 Key（至少其一）。
  * 顶部展示本应用的包名与签名 SHA-1（申请各家 Key 时都需要填写）。
- * 各 Key 均与「包名 + 签名 SHA1」绑定，保存后下次检测生效
+ * 百度与高德 Android Key 需绑定包名与签名；腾讯按控制台要求配置。
  * （检测器在每次启动检测时通过 LocationClient.setKey / AMapLocationClient.setApiKey /
  * TencentLocationManagerOptions.setKey 注入）。
  */
@@ -59,6 +59,13 @@ class KeyConfigActivity : AppCompatActivity() {
         }
     }
 
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        // Keep restored key inputs, but refresh the localized package/signature label.
+        findViewById<TextView>(R.id.tv_pkg_sha1).text =
+            getString(R.string.pkg_sha1_format, packageName, getSignSha1())
+    }
+
     /** 读取当前 APK 签名证书的 SHA-1（支持多签名，每个签名为一行） */
     @Suppress("DEPRECATION")
     private fun getSignSha1(): String {
@@ -74,14 +81,14 @@ class KeyConfigActivity : AppCompatActivity() {
             } else {
                 info.signatures?.map { it.toByteArray() } ?: emptyList()
             }
-            if (certs.isEmpty()) return "无法获取（未找到签名证书）"
+            if (certs.isEmpty()) return getString(R.string.text_unavailable_no_signing_certificate_found)
             val md = MessageDigest.getInstance("SHA-1")
             certs.joinToString("\n") { cert ->
                 md.digest(cert).joinToString(":") { "%02X".format(it.toInt() and 0xFF) }
             }
         } catch (t: Throwable) {
-            LogSaver.d("KeyConfig", "获取签名 SHA-1 异常: $t")
-            "无法获取（${t.message}）"
+            LogSaver.d("KeyConfig", getString(R.string.text_failed_to_read_signing_sha_1, t))
+            getString(R.string.text_unavailable, t.message)
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.tiger.locationverify.location
 
+import android.content.Context
+import com.tiger.locationverify.R
+
 /**
  * 单个 SDK 的检测报告（纯展示数据，由 UI 渲染为文本）。
  */
@@ -14,29 +17,27 @@ data class CheckReport(
     enum class Status { IDLE, RUNNING, SUCCESS, FAILED, NO_KEY, NOT_AGREED }
 }
 
-enum class RiskLevel(val label: String) {
-    /** 明确检出模拟/虚拟定位 */
-    HIGH("高风险"),
-    /** 可疑，需人工复核 */
-    MIDDLE("中风险"),
-    /** 未发现明显异常 */
-    LOW("低风险"),
-    /** 信息不足，无法评估 */
-    UNKNOWN("无法判断")
+enum class RiskLevel(private val labelRes: Int) {
+    HIGH(R.string.risk_high),
+    MIDDLE(R.string.risk_middle),
+    LOW(R.string.risk_low),
+    UNKNOWN(R.string.risk_unknown);
+
+    fun label(context: Context): String = context.getString(labelRes)
 }
 
 /** 将报告格式化为可展示的文本 */
-fun buildText(report: CheckReport): String = buildString {
+fun buildText(context: Context, report: CheckReport): String = buildString {
     val statusText = when (report.status) {
-        CheckReport.Status.IDLE -> "待检测"
-        CheckReport.Status.RUNNING -> "检测中…"
-        CheckReport.Status.SUCCESS -> "完成"
-        CheckReport.Status.FAILED -> "失败"
-        CheckReport.Status.NO_KEY -> "已跳过（未配置密钥）"
-        CheckReport.Status.NOT_AGREED -> "未同意隐私政策"
+        CheckReport.Status.IDLE -> context.getString(R.string.text_ready)
+        CheckReport.Status.RUNNING -> context.getString(R.string.text_checking)
+        CheckReport.Status.SUCCESS -> context.getString(R.string.text_completed)
+        CheckReport.Status.FAILED -> context.getString(R.string.text_failed)
+        CheckReport.Status.NO_KEY -> context.getString(R.string.text_skipped_no_key_configured)
+        CheckReport.Status.NOT_AGREED -> context.getString(R.string.text_privacy_consent_missing)
     }
-    appendLine("状态: $statusText")
-    append("虚拟定位风险: ${report.risk.label}")
+    appendLine(context.getString(R.string.text_status, statusText))
+    append(context.getString(R.string.text_mock_location_risk, report.risk.label(context)))
     if (report.riskReason.isNotBlank()) append("（${report.riskReason}）")
     appendLine()
     if (report.lines.isNotEmpty()) {

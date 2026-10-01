@@ -1,5 +1,7 @@
 package com.tiger.locationverify.util
 
+import com.tiger.locationverify.R
+
 import android.content.Context
 import java.io.File
 import java.text.SimpleDateFormat
@@ -34,10 +36,10 @@ object LogSaver {
     }
 
     /** 读取当前日志文件的最后 n 行 */
-    fun lastLines(n: Int): String {
+    fun lastLines(context: Context, n: Int): String {
         if (!::dir.isInitialized) return ""
         return try {
-            currentFile.takeIf { it.exists() }?.readLines()?.takeLast(n)?.joinToString("\n") ?: "（暂无日志）"
+            currentFile.takeIf { it.exists() }?.readLines()?.takeLast(n)?.joinToString("\n") ?: context.getString(R.string.text_no_logs_yet)
         } catch (_: Exception) {
             ""
         }

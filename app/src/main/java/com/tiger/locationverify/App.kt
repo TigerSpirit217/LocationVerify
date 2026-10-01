@@ -1,6 +1,12 @@
 package com.tiger.locationverify
 
 import android.app.Application
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
+import android.os.Process
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import com.amap.api.location.AMapLocationClient
 import com.baidu.location.LocationClient
 import com.tencent.map.geolocation.TencentLocationManager
@@ -17,6 +23,18 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        // Remove an earlier app language override when upgrading from the language picker.
+        // On older Android, locale storage is no longer opted in, so it is not loaded.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getSystemService(LocaleManager::class.java)?.let { manager ->
+                if (!manager.applicationLocales.isEmpty) {
+                    manager.applicationLocales = LocaleList.getEmptyLocaleList()
+                }
+            }
+        } else {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+        }
         LogSaver.init(this)
         val agreed = Prefs.getPrivacyAgreed(this)
         // 百度：必须在实例化 LocationClient 之前调用
@@ -26,6 +44,11 @@ class App : Application() {
         AMapLocationClient.updatePrivacyAgree(this, agreed)
         // 腾讯：必须在构造 TencentLocationManager 实例及调用任何定位接口之前设置
         TencentLocationManager.setUserAgreePrivacy(agreed)
-        LogSaver.d("App", "onCreate, privacyAgreed=$agreed")
+        val processName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Application.getProcessName()
+        } else {
+            "pid:${Process.myPid()}"
+        }
+        LogSaver.d("App", "onCreate, pid=${Process.myPid()} process=$processName privacyAgreed=$agreed")
     }
 }

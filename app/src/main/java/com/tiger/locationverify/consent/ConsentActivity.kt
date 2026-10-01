@@ -18,7 +18,7 @@ import com.tiger.locationverify.util.applySystemBarInsets
 
 /**
  * 首次打开的介绍与授权页面：
- * 展示功能介绍、隐私授权提示（两个定位 SDK 的合规要求），
+ * 展示功能介绍、隐私授权提示（三个定位 SDK 的合规要求），
  * 用户同意后才允许进入主界面并使用定位 SDK。
  */
 class ConsentActivity : AppCompatActivity() {
@@ -57,7 +57,9 @@ class ConsentActivity : AppCompatActivity() {
     }
 
     private fun goMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        })
         finish()
     }
 }

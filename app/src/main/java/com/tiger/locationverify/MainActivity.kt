@@ -65,9 +65,9 @@ class MainActivity : AppCompatActivity() {
         tvTencentResult = findViewById(R.id.tv_tencent_result)
         btnStart = findViewById(R.id.btn_start)
 
-        baiduChecker = BaiduLocationChecker(applicationContext)
-        amapChecker = AmapLocationChecker(applicationContext)
-        tencentChecker = TencentLocationChecker(applicationContext)
+        baiduChecker = BaiduLocationChecker(this)
+        amapChecker = AmapLocationChecker(this)
+        tencentChecker = TencentLocationChecker(this)
 
         btnStart.setOnClickListener { onStartCheckClick() }
         findViewById<Button>(R.id.btn_config_keys).setOnClickListener {
@@ -101,6 +101,18 @@ class MainActivity : AppCompatActivity() {
         tencentChecker.release()
     }
 
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        if (running) return
+        // Reports contain localized text. After recreation, show fresh placeholders
+        // rather than restoring text from the previous language or an interrupted check.
+        renderZone(tvBaiduResult, getString(R.string.zone_placeholder))
+        renderZone(tvAmapResult, getString(R.string.zone_placeholder))
+        renderZone(tvTencentResult, getString(R.string.zone_placeholder))
+        btnStart.isEnabled = true
+        refreshKeyState()
+    }
+
     private fun refreshKeyState() {
         tvKeyState.text = getString(
             R.string.key_state,
@@ -122,14 +134,14 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, KeyConfigActivity::class.java))
             return
         }
-        val missing = listOf(
+        val permissions = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
-        ).filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isNotEmpty()) {
-            permissionLauncher.launch(missing.toTypedArray())
+        )
+        if (permissions.none {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }) {
+            permissionLauncher.launch(permissions)
             return
         }
         startCheckSequence()
@@ -137,26 +149,34 @@ class MainActivity : AppCompatActivity() {
 
     /** 依次执行：先百度 SDK，再高德 SDK，最后腾讯 SDK */
     private fun startCheckSequence() {
+        if (running || isFinishing || isDestroyed) return
+        baiduChecker.release()
+        amapChecker.release()
+        tencentChecker.release()
+        baiduChecker = BaiduLocationChecker(this)
+        amapChecker = AmapLocationChecker(this)
+        tencentChecker = TencentLocationChecker(this)
         running = true
         btnStart.isEnabled = false
-        LogSaver.d("Flow", "开始检测：百度 → 高德 → 腾讯")
+        LogSaver.d("Flow", getString(R.string.text_starting_checks_baidu_amap_tencent))
         renderZone(tvBaiduResult, textWithStatus(getString(R.string.zone_baidu_running)))
         renderZone(tvAmapResult, textWithStatus(getString(R.string.zone_amap_waiting)))
         renderZone(tvTencentResult, textWithStatus(getString(R.string.zone_tencent_waiting)))
 
         baiduChecker.start { report ->
-            LogSaver.d("Flow", "百度完成: 风险=${report.risk.label} ${report.riskReason}")
-            renderZone(tvBaiduResult, buildText(report), report.risk)
             if (isFinishing || isDestroyed) return@start
+            LogSaver.d("Flow", getString(R.string.text_baidu_completed_risk, report.risk.label(this), report.riskReason))
+            renderZone(tvBaiduResult, buildText(this, report), report.risk)
             renderZone(tvAmapResult, textWithStatus(getString(R.string.zone_amap_running)))
-            amapChecker.start { r ->
-                LogSaver.d("Flow", "高德完成: 风险=${r.risk.label} ${r.riskReason}")
-                renderZone(tvAmapResult, buildText(r), r.risk)
-                if (isFinishing || isDestroyed) return@start
+            amapChecker.start amap@{ r ->
+                if (isFinishing || isDestroyed) return@amap
+                LogSaver.d("Flow", getString(R.string.text_amap_completed_risk, r.risk.label(this), r.riskReason))
+                renderZone(tvAmapResult, buildText(this, r), r.risk)
                 renderZone(tvTencentResult, textWithStatus(getString(R.string.zone_tencent_running)))
-                tencentChecker.start { rt ->
-                    LogSaver.d("Flow", "腾讯完成: 风险=${rt.risk.label} ${rt.riskReason}")
-                    renderZone(tvTencentResult, buildText(rt), rt.risk)
+                tencentChecker.start tencent@{ rt ->
+                    if (isFinishing || isDestroyed) return@tencent
+                    LogSaver.d("Flow", getString(R.string.text_tencent_completed_risk, rt.risk.label(this), rt.riskReason))
+                    renderZone(tvTencentResult, buildText(this, rt), rt.risk)
                     running = false
                     btnStart.isEnabled = true
                 }
@@ -165,7 +185,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun textWithStatus(text: String) = buildString {
-        appendLine("状态: 检测中…")
+        appendLine(getString(R.string.text_status_checking))
         appendLine()
         append(text)
     }
@@ -183,7 +203,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun viewLog() {
-        val content = LogSaver.lastLines(300)
+        val content = LogSaver.lastLines(this, 300)
         AlertDialog.Builder(this)
             .setTitle(R.string.log_title)
             .setMessage(getString(R.string.log_path, LogSaver.currentFile.absolutePath) + "\n\n" + content)

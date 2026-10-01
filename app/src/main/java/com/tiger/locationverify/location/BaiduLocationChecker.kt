@@ -7,6 +7,7 @@ import com.baidu.location.BDAbstractLocationListener
 import com.baidu.location.BDLocation
 import com.baidu.location.LocationClient
 import com.baidu.location.LocationClientOption
+import com.tiger.locationverify.R
 import com.tiger.locationverify.data.Prefs
 import com.tiger.locationverify.util.LogSaver
 
@@ -31,49 +32,55 @@ class BaiduLocationChecker(private val context: Context) {
 
     private var client: LocationClient? = null
     private var callback: ((CheckReport) -> Unit)? = null
-    private var finished = false
+    private var finished = true
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val listener = object : BDAbstractLocationListener() {
-        override fun onReceiveLocation(location: BDLocation) {
-            if (finished) return
-            finished = true
-            // 回调解析异常兜底：任何字段异常都不允许阻断结果上报
-            val report = try {
-                LogSaver.d(
-                    TAG, "回调: locType=${location.locType}(${location.locTypeDescription}) " +
-                        "mockProb=${location.getMockGnssProbability()} " +
-                        "strategy=${location.getMockGnssStrategy()} " +
-                        "disToReal=${location.getDisToRealLocation()}"
-                )
-                buildReport(location)
-            } catch (t: Throwable) {
-                LogSaver.d(TAG, "解析回调异常: $t")
-                error(CheckReport.Status.FAILED, "解析定位结果异常：${t.message}")
+        override fun onReceiveLocation(location: BDLocation?) {
+            mainHandler.post {
+                if (finished) return@post
+                finished = true
+                // 回调解析异常兜底：任何字段异常都不允许阻断结果上报
+                val report = try {
+                    if (location == null) {
+                        error(CheckReport.Status.FAILED, context.getString(R.string.text_empty_location_callback))
+                    } else {
+                        LogSaver.d(
+                            TAG, context.getString(
+                                R.string.log_baidu_callback,
+                                location.locType, location.locTypeDescription, location.getMockGnssProbability(), location.getMockGnssStrategy(), location.getDisToRealLocation()
+                            )
+                        )
+                        buildReport(location)
+                    }
+                } catch (t: Throwable) {
+                    LogSaver.d(TAG, context.getString(R.string.text_failed_to_parse_callback, t))
+                    error(CheckReport.Status.FAILED, context.getString(R.string.text_failed_to_parse_location_result, t.message))
+                }
+                deliver(report)
             }
-            deliver(report)
-            release()
         }
     }
 
     private val timeoutRunnable = Runnable {
         if (finished) return@Runnable
         finished = true
-        LogSaver.d(TAG, "定位超时")
-        deliver(error(CheckReport.Status.FAILED, "定位超时（15 秒未回调），请检查网络/定位开关后重试"))
-        release()
+        LogSaver.d(TAG, context.getString(R.string.text_location_timed_out))
+        deliver(error(CheckReport.Status.FAILED, context.getString(R.string.text_location_timed_out_no_callback_within_15)))
     }
 
     fun start(onResult: (CheckReport) -> Unit) {
+        release()
+        finished = false
         callback = onResult
         if (!Prefs.getPrivacyAgreed(context)) {
-            deliver(error(CheckReport.Status.NOT_AGREED, "尚未同意隐私政策，无法使用定位 SDK"))
+            deliver(error(CheckReport.Status.NOT_AGREED, context.getString(R.string.text_privacy_consent_is_required_to_use_location)))
             return
         }
         val ak = Prefs.getBaiduAk(context)
         if (ak.isBlank()) {
             // 允许只填一个 Key：未填写的 SDK 自动跳过，不初始化
-            deliver(error(CheckReport.Status.NO_KEY, "未填写百度 AK，已自动跳过（可在「配置密钥」中补充）"))
+            deliver(error(CheckReport.Status.NO_KEY, context.getString(R.string.text_baidu_ak_is_missing_skipped_add_it)))
             return
         }
         try {
@@ -93,7 +100,7 @@ class BaiduLocationChecker(private val context: Context) {
                 setIsNeedAltitude(true)
                 setIsNeedLocationDescribe(true)
                 setIsNeedLocationPoiList(false)
-                setScanSpan(0)                       // requestLocation 为单次请求
+                setScanSpan(0)                       // 不开启周期定位，接收首次结果后停止
                 setWifiCacheTimeOut(5 * 60 * 1000)
             }
             c.setLocOption(option)
@@ -101,59 +108,65 @@ class BaiduLocationChecker(private val context: Context) {
 
             finished = false
             mainHandler.postDelayed(timeoutRunnable, TIMEOUT_MS)
-            val code = c.requestLocation()           // 单次定位，异步回调
-            LogSaver.d(TAG, "请求定位返回码=$code ak=${maskKey(ak)}")
+            // start() 异步启动服务并自动发起首次定位；未启动时 requestLocation() 返回 1。
+            c.start()
+            LogSaver.d(TAG, context.getString(R.string.text_starting_location_ak, maskKey(ak)))
         } catch (t: Throwable) {
-            LogSaver.d(TAG, "启动异常: $t")
-            deliver(error(CheckReport.Status.FAILED, "百度 SDK 启动异常：${t.message}"))
-            release()
+            LogSaver.d(TAG, context.getString(R.string.text_startup_exception, t))
+            deliver(error(CheckReport.Status.FAILED, context.getString(R.string.text_baidu_sdk_startup_failed, t.message)))
         }
     }
 
     fun release() {
-        mainHandler.removeCallbacks(timeoutRunnable)
+        finished = true
+        callback = null
+        mainHandler.removeCallbacksAndMessages(null)
         val c = client ?: return
         client = null
         try {
             c.unRegisterLocationListener(listener)
             c.stop()
         } catch (t: Throwable) {
-            LogSaver.d(TAG, "释放异常: $t")
+            LogSaver.d(TAG, context.getString(R.string.text_cleanup_exception, t))
         }
     }
 
     // ---------- 私有 ----------
 
     private fun deliver(report: CheckReport) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { deliver(report) }
+            return
+        }
         val cb = callback ?: return
-        val r = Runnable { cb(report) }
-        if (Looper.myLooper() == Looper.getMainLooper()) r.run() else mainHandler.post(r)
+        release()
+        cb(report)
     }
 
     private fun error(status: CheckReport.Status, reason: String) =
-        CheckReport("百度地图定位 SDK", status, emptyList(), RiskLevel.UNKNOWN, reason)
+        CheckReport(context.getString(R.string.text_baidu_location_sdk), status, emptyList(), RiskLevel.UNKNOWN, reason)
 
     private fun buildReport(loc: BDLocation): CheckReport {
         val locType = loc.locType
         val lines = mutableListOf<Pair<String, String>>()
 
-        lines += "定位类型" to "${locType}（${loc.locTypeDescription}）"
-        lines += "经纬度" to "${loc.latitude}, ${loc.longitude}"
-        lines += "定位精度(半径)" to "${loc.radius} 米"
-        lines += "详细地址" to (loc.addrStr ?: "无")
-        lines += "位置描述" to (loc.locationDescribe ?: "无")
+        lines += context.getString(R.string.text_location_type) to "${locType}（${loc.locTypeDescription}）"
+        lines += context.getString(R.string.text_latitude_longitude) to "${loc.latitude}, ${loc.longitude}"
+        lines += context.getString(R.string.text_accuracy_radius) to context.getString(R.string.text_m, loc.radius)
+        lines += context.getString(R.string.text_full_address) to (loc.addrStr ?: context.getString(R.string.text_none))
+        lines += context.getString(R.string.text_location_description) to (loc.locationDescribe ?: context.getString(R.string.text_none))
         if (locType == BDLocation.TypeGpsLocation || locType == BDLocation.TypeGnssLocation) {
-            lines += "卫星数" to "${loc.satelliteNumber}"
+            lines += context.getString(R.string.text_satellite_count) to "${loc.satelliteNumber}"
         }
-        lines += "网络定位方式" to loc.networkLocationType.ifBlank { "无" }   // wf=wifi / cl=基站 / ll=GPS
-        lines += "坐标系" to (loc.coorType ?: "未知")
+        lines += context.getString(R.string.text_network_location_method) to (loc.networkLocationType?.ifBlank { context.getString(R.string.text_none) } ?: context.getString(R.string.text_none))
+        lines += context.getString(R.string.text_coordinate_system) to (loc.coorType ?: context.getString(R.string.text_unknown))
         if (loc.altitude != Double.MIN_VALUE) {
-            lines += "海拔" to "${loc.altitude} 米"
+            lines += context.getString(R.string.text_altitude) to context.getString(R.string.text_m, loc.altitude)
         }
-        lines += "所处位置" to when (loc.getLocationWhere()) {
-            BDLocation.LOCATION_WHERE_IN_CN -> "国内"
-            BDLocation.LOCATION_WHERE_OUT_CN -> "国外"
-            else -> "未知"
+        lines += context.getString(R.string.text_region) to when (loc.getLocationWhere()) {
+            BDLocation.LOCATION_WHERE_IN_CN -> context.getString(R.string.text_inside_china)
+            BDLocation.LOCATION_WHERE_OUT_CN -> context.getString(R.string.text_outside_china)
+            else -> context.getString(R.string.text_unknown)
         }
 
         // ---------- 虚拟位置重点字段 ----------
@@ -162,12 +175,12 @@ class BaiduLocationChecker(private val context: Context) {
         val disToReal = loc.getDisToRealLocation()
         val real = loc.getReallLocation()
 
-        lines += "作弊概率(MockGNSS)" to "${mockProbLabel(mockProb)}（原始值 $mockProb）"
-        lines += "防作弊策略" to if (strategy != 0) "命中策略 #$strategy" else "未命中"
-        lines += "虚假位置与真实位置距离" to
-            if (disToReal > 0) "$disToReal 米" else "无（未检出虚拟位置或无需计算）"
+        lines += context.getString(R.string.text_mock_probability_mockgnss) to context.getString(R.string.text_raw_value, mockProbLabel(mockProb), mockProb)
+        lines += context.getString(R.string.text_anti_mock_strategy) to if (strategy != 0) context.getString(R.string.text_strategy_matched, strategy) else context.getString(R.string.text_no_match)
+        lines += context.getString(R.string.text_distance_between_fake_and_real_locations) to
+            if (disToReal > 0) context.getString(R.string.text_m, disToReal) else context.getString(R.string.text_none_no_fake_location_detected_or_calculation)
         if (real != null) {
-            lines += "推算真实位置" to "${real.latitude}, ${real.longitude}"
+            lines += context.getString(R.string.text_estimated_real_location) to "${real.latitude}, ${real.longitude}"
         }
 
         // ---------- 风险判定 ----------
@@ -179,29 +192,29 @@ class BaiduLocationChecker(private val context: Context) {
             BDLocation.TypeServerError
         )
         val (risk, reason) = when {
-            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_HIGH ->
-                RiskLevel.HIGH to "百度 SDK 判定该定位点作弊概率高"
-            disToReal > 0 ->
-                RiskLevel.HIGH to "检出虚假位置，与真实位置相距 $disToReal 米"
-            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_MIDDLE ->
-                RiskLevel.MIDDLE to "作弊概率中等，疑似虚拟定位"
-            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_LOW || mockProb == BDLocation.MOCK_GNSS_PROBABILITY_ZERO ->
-                RiskLevel.LOW to "作弊概率低，未发现明显虚拟定位迹象"
             locType in failedTypes ->
-                RiskLevel.UNKNOWN to "定位未成功（类型 $locType），无法评估虚拟位置风险"
+                RiskLevel.UNKNOWN to context.getString(R.string.text_location_failed_type_mock_location_risk_cannot, locType)
+            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_HIGH ->
+                RiskLevel.HIGH to context.getString(R.string.text_baidu_sdk_reported_a_high_mock_probability)
+            disToReal > 0 ->
+                RiskLevel.HIGH to context.getString(R.string.text_fake_location_detected_m_from_the_real, disToReal)
+            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_MIDDLE ->
+                RiskLevel.MIDDLE to context.getString(R.string.text_moderate_mock_probability_suspected_mock_location)
+            mockProb == BDLocation.MOCK_GNSS_PROBABILITY_LOW || mockProb == BDLocation.MOCK_GNSS_PROBABILITY_ZERO ->
+                RiskLevel.LOW to context.getString(R.string.text_low_mock_probability_no_clear_signs_of)
             else ->
-                RiskLevel.UNKNOWN to "作弊概率未知，建议结合定位来源人工判断"
+                RiskLevel.UNKNOWN to context.getString(R.string.text_mock_probability_is_unknown_review_the_location)
         }
 
         val status = if (locType in failedTypes) CheckReport.Status.FAILED else CheckReport.Status.SUCCESS
-        return CheckReport("百度地图定位 SDK", status, lines, risk, reason)
+        return CheckReport(context.getString(R.string.text_baidu_location_sdk), status, lines, risk, reason)
     }
 
     private fun mockProbLabel(v: Int): String = when (v) {
-        BDLocation.MOCK_GNSS_PROBABILITY_HIGH -> "高"
-        BDLocation.MOCK_GNSS_PROBABILITY_MIDDLE -> "中"
-        BDLocation.MOCK_GNSS_PROBABILITY_LOW -> "低"
-        BDLocation.MOCK_GNSS_PROBABILITY_ZERO -> "零（无作弊迹象）"
-        else -> "未知"
+        BDLocation.MOCK_GNSS_PROBABILITY_HIGH -> context.getString(R.string.text_high)
+        BDLocation.MOCK_GNSS_PROBABILITY_MIDDLE -> context.getString(R.string.text_medium)
+        BDLocation.MOCK_GNSS_PROBABILITY_LOW -> context.getString(R.string.text_low)
+        BDLocation.MOCK_GNSS_PROBABILITY_ZERO -> context.getString(R.string.text_zero_no_signs_of_cheating)
+        else -> context.getString(R.string.text_unknown)
     }
 }

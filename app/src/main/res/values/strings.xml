@@ -1,76 +1,218 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">位置真伪检测</string>
-
-    <!-- 主界面 -->
-    <string name="key_state">百度 AK：%1$s ｜ 高德 Key：%2$s ｜ 腾讯 Key：%3$s</string>
-    <string name="filled">已填写</string>
-    <string name="not_filled">未填写</string>
-    <string name="btn_start">开始检测</string>
-    <string name="btn_config_keys">配置密钥</string>
-    <string name="btn_view_log">查看日志</string>
-    <string name="btn_clear_log">清空日志</string>
-    <string name="btn_privacy">隐私政策</string>
-    <string name="zone_baidu_title">百度地图定位 SDK 检测结果</string>
-    <string name="zone_amap_title">高德地图定位 SDK 检测结果</string>
-    <string name="zone_tencent_title">腾讯地图定位 SDK 检测结果</string>
-    <string name="zone_placeholder">尚未检测。\n\n在右上角「配置密钥」中至少填写百度 AK、高德 Key、腾讯 Key 其一（未填写的 SDK 将自动跳过），点击「开始检测」：\n依次运行百度 → 高德 → 腾讯三个 SDK，结果将分别显示于此。</string>
-    <string name="zone_baidu_running">正在运行百度定位 SDK（单次定位，最长等待 15 秒）…</string>
-    <string name="zone_amap_waiting">等待百度 SDK 检测完成后自动开始…</string>
-    <string name="zone_amap_running">正在运行高德定位 SDK（单次定位，最长等待 15 秒）…</string>
-    <string name="zone_tencent_waiting">等待高德 SDK 检测完成后自动开始…</string>
-    <string name="zone_tencent_running">正在运行腾讯定位 SDK（单次定位，最长等待 15 秒）…</string>
-    <string name="need_keys">三个 Key 均未填写：请至少填写一个（Key 与包名、签名 SHA1 绑定），未填写的 SDK 将自动跳过</string>
-    <string name="permission_denied">未授予定位权限，无法进行检测</string>
-    <string name="log_title">检测日志</string>
-    <string name="log_path">日志文件（应用内部存储，无需存储权限）：\n%1$s</string>
-    <string name="log_cleared">日志已清空</string>
-
-    <!-- 引导页（首次打开：功能介绍 + 授权提示） -->
-    <string name="consent_title">功能介绍与授权说明</string>
-    <string name="consent_feature_title">本工具能做什么</string>
-    <string name="consent_features">· 同时集成「百度地图定位 SDK」「高德地图定位 SDK」「腾讯定位 SDK」，一次检测依次运行三个 SDK；\n
-· 主界面分三区：上区百度、中区高德、下区腾讯，分别显示各自 SDK 返回值；\n
-· 重点关注各 SDK 对「虚拟位置 / 模拟定位」的判定结果：\n
-　　- 百度：作弊概率（getMockGnssProbability）、防作弊策略、虚假位置与真实位置距离；\n
-　　- 高德：是否模拟位置（isMock）、模拟定位错误码 15；\n
-　　- 腾讯：是否 Mock GPS（isMockGps）、作弊概率（getFakeProbability）、作弊原因（getFakeReason）；\n
-· 使用前需自行填写各 SDK 的 Key（至少其一，均与包名、签名 SHA1 绑定），未填写的 SDK 将自动跳过。</string>
-    <string name="consent_privacy_title">授权提示（隐私合规）</string>
-    <string name="consent_privacy">为完成定位检测，三个定位 SDK 会采集并处理以下信息：\n
-· 位置信息：GNSS（卫星）、基站、Wi-Fi 信息等；\n
-· 网络与设备信息：网络类型、IP 地址、蓝牙信息、传感器信息、SIM 卡状态、设备参数与系统信息、设备标识（如 OAID）等；\n
-· 腾讯定位 SDK 还会基于《反电信网络诈骗法》相关要求进行反诈监测（识别恶意应用、仿冒/篡改应用）。\n
-上述信息仅用于本次定位与虚拟位置风险评估，检测结果与日志仅保存在您的设备本地；除各 SDK 官方服务外，不会向任何第三方传输。\n
-点击「同意并继续」即表示您已阅读并同意上述说明及各 SDK 隐私政策；选择「不同意」应用将退出，定位功能不可用。</string>
-    <string name="consent_links">\n百度地图开放平台隐私政策：\nhttps://lbsyun.baidu.com/index.php?title=openprivacy\n\n高德开放平台隐私政策：\nhttps://lbs.amap.com/pages/privacy/\n\n腾讯定位 SDK 个人信息处理规则：\nhttps://privacy.qq.com/document/preview/dbd484ce652c486cb6d7e43ef12cefb0</string>
-    <string name="consent_agree">我已阅读并同意以上功能介绍与授权说明</string>
-    <string name="consent_btn_agree">同意并继续</string>
-    <string name="consent_btn_exit">不同意并退出</string>
-    <string name="consent_saved">已同意，欢迎使用</string>
-
-    <!-- 密钥配置 -->
-    <string name="key_config_title">配置密钥</string>
-    <string name="pkg_sha1_format">包名：
-%1$s
-
-SHA-1：
-%2$s</string>
-    <string name="key_config_label_baidu">百度 AK（lbsyun.baidu.com 创建应用获取）</string>
-    <string name="key_config_label_amap">高德 Key（console.amap.com 创建应用获取）</string>
-    <string name="key_config_label_tencent">腾讯 Key（lbs.qq.com/dev/console/application/mine 创建应用获取）</string>
-    <string name="key_config_hint">密钥申请说明：\n
-· 三家的 Key 均与「包名 com.tiger.locationverify + 签名 SHA1」绑定；\n
-· 三个 Key 至少填写一个即可使用，未填写的 SDK 在检测时自动跳过；\n
-· 百度：创建「Android SDK」类型应用，发布版 SHA1 与开发版 SHA1 都建议填写；\n
-· 高德：创建应用后添加「Android 平台」Key，填写包名与 SHA1；\n
-· 腾讯：控制台创建应用即可，Key 支持应用内动态设置（无需改代码）；\n
-· 保存后无需重启，下次点击「开始检测」即生效。\n
-申请入口：\n
-https://lbsyun.baidu.com/apiconsole/key\n
-https://console.amap.com/dev/key/app\n
-https://lbs.qq.com/dev/console/application/mine</string>
-    <string name="key_config_save">保存</string>
-    <string name="key_at_least_one">请至少填写一个 Key</string>
-    <string name="key_saved">已保存，返回主界面即可开始检测</string>
+    <string name="app_name">LocationVerify</string>
+    <string name="key_state">Baidu AK: %1$s | Amap Key: %2$s | Tencent Key: %3$s</string>
+    <string name="filled">Configured</string>
+    <string name="not_filled">Missing</string>
+    <string name="btn_start">Start check</string>
+    <string name="btn_config_keys">Configure keys</string>
+    <string name="btn_view_log">View logs</string>
+    <string name="btn_clear_log">Clear logs</string>
+    <string name="btn_privacy">Privacy policy</string>
+    <string name="zone_baidu_title">Baidu Location SDK results</string>
+    <string name="zone_amap_title">Amap Location SDK results</string>
+    <string name="zone_tencent_title">Tencent Location SDK results</string>
+    <string name="zone_placeholder">No results yet.\n\nConfigure at least one Baidu AK, Amap Key or Tencent Key, then tap Start check. SDKs without a key are skipped.\nThe checks run in order: Baidu → Amap → Tencent.</string>
+    <string name="zone_baidu_running">Running Baidu Location SDK (one result; up to 15 seconds)…</string>
+    <string name="zone_amap_waiting">Waiting for the Baidu check to finish…</string>
+    <string name="zone_amap_running">Running Amap Location SDK (one result; up to 15 seconds)…</string>
+    <string name="zone_tencent_waiting">Waiting for the Amap check to finish…</string>
+    <string name="zone_tencent_running">Running Tencent Location SDK (one result; up to 15 seconds)…</string>
+    <string name="need_keys">No keys configured. Add at least one key; SDKs without a key will be skipped.</string>
+    <string name="permission_denied">Location permission was denied; checks cannot run</string>
+    <string name="log_title">Check logs</string>
+    <string name="log_path">Log file (app internal storage; no storage permission required):\n%1$s</string>
+    <string name="log_cleared">Logs cleared</string>
+    <string name="consent_title">Features and privacy consent</string>
+    <string name="consent_feature_title">What this tool does</string>
+    <string name="consent_features">· Runs Baidu, Amap and Tencent Location SDKs in order.\n· Each SDK has its own result section.\n· Shows SDK mock location signals:\n  - Baidu: mock probability, anti-mock strategy and distance from the estimated real location.\n  - Amap: isMock and mock location error code 15.\n  - Tencent: isMockGps, fake probability and fake reason.\n· Configure at least one key before checking. SDKs without a key are skipped. Baidu and Amap Android keys require the package name and signing SHA-1; follow Tencent console requirements for its Key.</string>
+    <string name="consent_privacy_title">Privacy consent</string>
+    <string name="consent_privacy">The three location SDKs collect and process information to provide location checks:\n· Location data: GNSS satellites, cell towers and Wi-Fi information.\n· Network and device data: network type, IP address, Bluetooth, sensors, SIM state, device and system parameters, and identifiers such as OAID, as described in each SDK privacy policy.\n· Tencent also describes anti-fraud monitoring, including identification of malicious, impersonated or tampered applications.\nThe app stores check results and logs on your device. The SDKs may send information to their official services under their privacy policies; the app has no additional upload service.\nTap Agree and continue to accept this notice and the SDK privacy policies. Declining exits the app and disables location checks.</string>
+    <string name="consent_links">\nBaidu privacy policy:\nhttps://lbsyun.baidu.com/index.php?title=openprivacy\n\nAmap privacy policy:\nhttps://lbs.amap.com/pages/privacy/\n\nTencent Location SDK privacy policy:\nhttps://privacy.qq.com/document/preview/dbd484ce652c486cb6d7e43ef12cefb0</string>
+    <string name="consent_agree">I have read and agree to the features and privacy notice</string>
+    <string name="consent_btn_agree">Agree and continue</string>
+    <string name="consent_btn_exit">Decline and exit</string>
+    <string name="consent_saved">Consent saved</string>
+    <string name="key_config_title">Configure keys</string>
+    <string name="pkg_sha1_format">Package name:\n%1$s\n\nSHA-1:\n%2$s</string>
+    <string name="key_config_label_baidu">Baidu AK (create an app at lbsyun.baidu.com)</string>
+    <string name="key_config_label_amap">Amap Key (create an app at console.amap.com)</string>
+    <string name="key_config_label_tencent">Tencent Key (lbs.qq.com/dev/console/application/mine)</string>
+    <string name="key_config_hint">Key setup:\n· Configure at least one key; SDKs without keys are skipped.\n· Baidu: create an Android SDK app with package com.tiger.locationverify and the correct signing SHA-1.\n· Amap: add an Android Key with the package name and signing SHA-1.\n· Tencent: create an application in the console and follow its authorization requirements.\n· Baidu and Amap keys are set before client creation. Tencent uses a process singleton; restart the app after changing its Key to ensure it takes effect.\nConsole links:\nhttps://lbsyun.baidu.com/apiconsole/key\nhttps://console.amap.com/dev/key/app\nhttps://lbs.qq.com/dev/console/application/mine</string>
+    <string name="key_config_save">Save</string>
+    <string name="key_at_least_one">Please configure at least one key</string>
+    <string name="key_saved">Keys saved. Restart the app if you changed the Tencent Key.</string>
+    <string name="text_starting_checks_baidu_amap_tencent">Starting checks: Baidu → Amap → Tencent</string>
+    <string name="text_baidu_completed_risk">Baidu completed: risk=%1$s %2$s</string>
+    <string name="text_amap_completed_risk">Amap completed: risk=%1$s %2$s</string>
+    <string name="text_tencent_completed_risk">Tencent completed: risk=%1$s %2$s</string>
+    <string name="text_status_checking">Status: Checking…</string>
+    <string name="text_unavailable_no_signing_certificate_found">Unavailable (no signing certificate found)</string>
+    <string name="text_failed_to_read_signing_sha_1">Failed to read signing SHA-1: %1$s</string>
+    <string name="text_unavailable">Unavailable (%1$s)</string>
+    <string name="text_empty_location_callback">Empty location callback</string>
+    <string name="text_failed_to_parse_callback">Failed to parse callback: %1$s</string>
+    <string name="text_failed_to_parse_location_result">Failed to parse location result: %1$s</string>
+    <string name="text_location_timed_out">Location timed out</string>
+    <string name="text_location_timed_out_no_callback_within_15">Location timed out (no callback within 15 seconds). Check your network and location settings, then retry.</string>
+    <string name="text_privacy_consent_is_required_to_use_location">Privacy consent is required to use location SDKs</string>
+    <string name="text_amap_key_is_missing_skipped_add_it">Amap Key is missing; skipped (add it in Configure keys)</string>
+    <string name="text_starting_location_key">Starting location key=%1$s</string>
+    <string name="text_startup_exception">Startup exception: %1$s</string>
+    <string name="text_amap_sdk_startup_failed">Amap SDK startup failed: %1$s</string>
+    <string name="text_cleanup_exception">Cleanup exception: %1$s</string>
+    <string name="text_amap_location_sdk">Amap Location SDK</string>
+    <string name="text_location_result">Location result</string>
+    <string name="text_failed_result_identified_as_a_mock_location">Failed: result identified as a mock location</string>
+    <string name="text_error_code">Error code</string>
+    <string name="text_15_location_failed_because_the_result_was">15 (location failed because the result was mocked)</string>
+    <string name="text_error_description">Error description</string>
+    <string name="text_none">None</string>
+    <string name="text_details">Details</string>
+    <string name="text_amap_sdk_identified_this_result_as_a">Amap SDK identified this result as a mock location (error code 15)</string>
+    <string name="text_troubleshooting">Troubleshooting</string>
+    <string name="text_location_failed_error_code_mock_location_risk">Location failed (error code %1$s); mock location risk cannot be assessed</string>
+    <string name="text_success">Success</string>
+    <string name="text_mock_location_ismock">Mock location (isMock)</string>
+    <string name="text_yes_suspected_mock_location">Yes (suspected mock location)</string>
+    <string name="text_no">No</string>
+    <string name="text_location_source_type">Location source (type)</string>
+    <string name="text_location_details">Location details</string>
+    <string name="text_latitude_longitude">Latitude, longitude</string>
+    <string name="text_accuracy">Accuracy</string>
+    <string name="text_m">%1$s m</string>
+    <string name="text_trust_level_trustedlevel">Trust level (trustedLevel)</string>
+    <string name="text_satellite_count">Satellite count</string>
+    <string name="text_satellite_signal_strength">Satellite signal strength</string>
+    <string name="text_address">Address</string>
+    <string name="text_speed">Speed</string>
+    <string name="text_m_s">%1$s m/s</string>
+    <string name="text_bearing">Bearing</string>
+    <string name="text_building">Building</string>
+    <string name="text_floor">%1$s (floor %2$s)</string>
+    <string name="text_unknown">Unknown</string>
+    <string name="text_amap_sdk_marked_this_result_as_a">Amap SDK marked this result as a mock location (isMock=true)</string>
+    <string name="text_amap_sdk_did_not_mark_this_result">Amap SDK did not mark this result as a mock location</string>
+    <string name="text_location_failed">Location failed</string>
+    <string name="text_gps_satellite_location">GPS (satellite) location</string>
+    <string name="text_previous_location_result">Previous location result</string>
+    <string name="text_cached_location_result">Cached location result</string>
+    <string name="text_wi_fi_location_network">Wi-Fi location (network)</string>
+    <string name="text_cell_tower_location_network">Cell tower location (network)</string>
+    <string name="text_offline_location_result">Offline location result</string>
+    <string name="text_last_known_location">Last known location</string>
+    <string name="text_coarse_location_approximate_permission">Coarse location (approximate permission)</string>
+    <string name="text_system_network_location_amap_network_fallback">System network location (Amap network fallback)</string>
+    <string name="text_other_type">Other type</string>
+    <string name="text_high_within_15_seconds_live_gps">High (within 15 seconds; live GPS)</string>
+    <string name="text_normal_15_seconds_2_minutes_cached_offline">Normal (15 seconds–2 minutes; cached/offline/last location)</string>
+    <string name="text_low_2_10_minutes">Low (2–10 minutes)</string>
+    <string name="text_very_low_over_10_minutes_also_used">Very low (over 10 minutes; also used for mocked results)</string>
+    <string name="text_unknown_2">Unknown (%1$s)</string>
+    <string name="text_weak">Weak</string>
+    <string name="text_strong">Strong</string>
+    <string name="text_key_authentication_failed_check_package_name_and">Key authentication failed: check package name and signing SHA-1 binding</string>
+    <string name="text_location_client_startup_failed_check_the_apsservice">Location client startup failed: check the APSService declaration in AndroidManifest</string>
+    <string name="text_location_permission_is_missing_grant_location_access">Location permission is missing: grant location access in system settings (precise recommended)</string>
+    <string name="text_wi_fi_cell_data_is_unavailable_and">Wi-Fi/cell data is unavailable and GPS is unavailable</string>
+    <string name="text_poor_gps_signal_move_to_an_open">Poor GPS signal: move to an open area and retry</string>
+    <string name="text_only_approximate_location_access_was_granted_grant">Only approximate location access was granted; grant precise location access</string>
+    <string name="text_baidu_ak_is_missing_skipped_add_it">Baidu AK is missing; skipped (add it in Configure keys)</string>
+    <string name="text_starting_location_ak">Starting location ak=%1$s</string>
+    <string name="text_baidu_sdk_startup_failed">Baidu SDK startup failed: %1$s</string>
+    <string name="text_baidu_location_sdk">Baidu Location SDK</string>
+    <string name="text_location_type">Location type</string>
+    <string name="text_accuracy_radius">Accuracy (radius)</string>
+    <string name="text_full_address">Full address</string>
+    <string name="text_location_description">Location description</string>
+    <string name="text_network_location_method">Network location method</string>
+    <string name="text_coordinate_system">Coordinate system</string>
+    <string name="text_altitude">Altitude</string>
+    <string name="text_region">Region</string>
+    <string name="text_inside_china">Inside China</string>
+    <string name="text_outside_china">Outside China</string>
+    <string name="text_mock_probability_mockgnss">Mock probability (MockGNSS)</string>
+    <string name="text_raw_value">%1$s (raw value %2$s)</string>
+    <string name="text_anti_mock_strategy">Anti-mock strategy</string>
+    <string name="text_strategy_matched">Strategy #%1$s matched</string>
+    <string name="text_no_match">No match</string>
+    <string name="text_distance_between_fake_and_real_locations">Distance between fake and real locations</string>
+    <string name="text_none_no_fake_location_detected_or_calculation">None (no fake location detected or calculation unnecessary)</string>
+    <string name="text_estimated_real_location">Estimated real location</string>
+    <string name="text_location_failed_type_mock_location_risk_cannot">Location failed (type %1$s); mock location risk cannot be assessed</string>
+    <string name="text_baidu_sdk_reported_a_high_mock_probability">Baidu SDK reported a high mock probability</string>
+    <string name="text_fake_location_detected_m_from_the_real">Fake location detected; %1$s m from the real location</string>
+    <string name="text_moderate_mock_probability_suspected_mock_location">Moderate mock probability; suspected mock location</string>
+    <string name="text_low_mock_probability_no_clear_signs_of">Low mock probability; no clear signs of mock location</string>
+    <string name="text_mock_probability_is_unknown_review_the_location">Mock probability is unknown; review the location source</string>
+    <string name="text_high">High</string>
+    <string name="text_medium">Medium</string>
+    <string name="text_low">Low</string>
+    <string name="text_zero_no_signs_of_cheating">Zero (no signs of cheating)</string>
+    <string name="text_ready">Ready</string>
+    <string name="text_checking">Checking…</string>
+    <string name="text_completed">Completed</string>
+    <string name="text_failed">Failed</string>
+    <string name="text_skipped_no_key_configured">Skipped (no key configured)</string>
+    <string name="text_privacy_consent_missing">Privacy consent missing</string>
+    <string name="text_status">Status: %1$s</string>
+    <string name="text_mock_location_risk">Mock location risk: %1$s</string>
+    <string name="text_empty_location_callback_error_reason">Empty location callback: error=%1$s reason=%2$s</string>
+    <string name="text_tencent_location_sdk">Tencent Location SDK</string>
+    <string name="text_status_update_name_status_desc">Status update: name=%1$s status=%2$s desc=%3$s</string>
+    <string name="text_tencent_key_is_missing_skipped_add_it">Tencent Key is missing; skipped (add it in Configure keys)</string>
+    <string name="text_starting_location_returncode_key">Starting location returnCode=%1$s key=%2$s</string>
+    <string name="text_tencent_location_request_was_rejected_return_code">Tencent location request was rejected (return code %1$s). Check the Key, permissions and SDK configuration.</string>
+    <string name="text_tencent_sdk_startup_failed">Tencent SDK startup failed: %1$s</string>
+    <string name="text_location_failed_mock_location_risk_cannot_be">Location failed (%1$s); mock location risk cannot be assessed</string>
+    <string name="text_location_provider">Location provider</string>
+    <string name="text_detailed_source_sourceprovider">Detailed source (sourceProvider)</string>
+    <string name="text_mock_gps_data_ismockgps">Mock GPS data (isMockGps)</string>
+    <string name="text_yes_gps_point_contains_mock_data">Yes (GPS point contains mock data)</string>
+    <string name="text_unknown_only_valid_for_gps_sources">Unknown (only valid for GPS sources)</string>
+    <string name="text_fake_probability_fakeprobability_0_1">Fake probability (fakeProbability, 0–1)</string>
+    <string name="text_fake_reason_fakereason">Fake reason (fakeReason)</string>
+    <string name="text_detailed_source_is_fake">%1$s (detailed source is FAKE)</string>
+    <string name="text_not_meaningful_unless_the_detailed_source_is">%1$s (not meaningful unless the detailed source is FAKE)</string>
+    <string name="text_gps_signal_strength">GPS signal strength</string>
+    <string name="text_location_name">Location name</string>
+    <string name="text_address_description">Address description</string>
+    <string name="text_indoor_building">Indoor building</string>
+    <string name="text_location_time">Location time</string>
+    <string name="text_tencent_sdk_identified_this_gps_point_as">Tencent SDK identified this GPS point as mock data (isMockGps=1)</string>
+    <string name="text_detailed_source_is_fake_sdk_detected_cheating">Detailed source is FAKE; SDK detected cheating (reason code %1$s)</string>
+    <string name="text_fake_probability_0_1_high_risk">Fake probability %1$s (0–1); high risk</string>
+    <string name="text_fake_probability_0_1_suspected_mock_location">Fake probability %1$s (0–1); suspected mock location</string>
+    <string name="text_tencent_sdk_did_not_mark_this_gps">Tencent SDK did not mark this GPS point as a mock location</string>
+    <string name="text_this_source_cannot_assess_mock_gps_and">This source cannot assess Mock GPS and has no clear anti-mock signal</string>
+    <string name="text_gps_satellite_location_2">GPS satellite location</string>
+    <string name="text_beidou_satellite_location">BeiDou satellite location</string>
+    <string name="text_network_location">Network location</string>
+    <string name="text_cell_tower_location">Cell tower location</string>
+    <string name="text_coarse_location">Coarse location</string>
+    <string name="text_gcj02_default">GCJ02 (default)</string>
+    <string name="text_other">Other (%1$s)</string>
+    <string name="text_success_0">Success (0)</string>
+    <string name="text_network_error">Network error</string>
+    <string name="text_gps_wi_fi_cell_error">GPS/Wi-Fi/cell error</string>
+    <string name="text_coordinate_conversion_failed">Coordinate conversion failed</string>
+    <string name="text_internal_sdk_error">Internal SDK error</string>
+    <string name="text_usage_restricted">Usage restricted</string>
+    <string name="text_no_signal">No signal</string>
+    <string name="text_no_logs_yet">(No logs yet)</string>
+    <string name="risk_high">High risk</string>
+    <string name="risk_middle">Medium risk</string>
+    <string name="risk_low">Low risk</string>
+    <string name="risk_unknown">Unknown</string>
+    <string name="key_hint_baidu">Example: xxxxxxxxxxxxxxxxxxxxxxxxxxxx</string>
+    <string name="key_hint_amap">Example: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</string>
+    <string name="key_hint_tencent">Example: xxxxx-xxxxx-xxxxx-xxxxx-xxxxx</string>
+    <string name="log_amap_callback">Callback: errorCode=%1$s errorInfo=%2$s isMock=%3$s type=%4$s</string>
+    <string name="log_baidu_callback">Callback: locType=%1$s(%2$s) mockProb=%3$s strategy=%4$s disToReal=%5$s</string>
+    <string name="log_tencent_callback">Callback: error=%1$s reason=%2$s provider=%3$s sourceProvider=%4$s mockGps=%5$s fakeProb=%6$s</string>
+    <string name="log_tencent_request">Request configuration: mode=%1$s level=%2$s sdkTimeoutMs=%3$s appTimeoutMs=%4$s antiMock=%5$s needAddress=%6$s</string>
+    <string name="log_tencent_environment">Location environment: finePermission=%1$s coarsePermission=%2$s locationEnabled=%3$s networkValidated=%4$s</string>
+    <string name="log_tencent_environment_failed">Failed to read location environment: %1$s</string>
+    <string name="log_tencent_timeout">Location timed out; last statuses: %1$s</string>
+    <string name="log_tencent_error">Location callback failed: error=%1$s reason=%2$s</string>
 </resources>

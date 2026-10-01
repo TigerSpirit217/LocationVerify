@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#A8C7FA</color>
+    <color name="primary_dark">#17294A</color>
+    <color name="page_bg">#101318</color>
+    <color name="card_bg">#1C2028</color>
+    <color name="card_border">#3B424E</color>
+    <color name="button_bg">#245CCC</color>
+    <color name="text_main">#E8EAED</color>
+    <color name="text_sub">#B2BAC7</color>
+    <color name="text_hint">#A6AFBD</color>
+    <color name="link">#A8C7FA</color>
+    <color name="risk_high">#FF8A80</color>
+    <color name="risk_mid">#FFD180</color>
+    <color name="risk_low">#81C995</color>
+    <color name="risk_unknown">#B2BAC7</color>
+</resources>

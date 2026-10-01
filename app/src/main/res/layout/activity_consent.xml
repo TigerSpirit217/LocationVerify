@@ -63,7 +63,7 @@
             android:autoLink="web"
             android:lineSpacingExtra="3dp"
             android:text="@string/consent_links"
-            android:textColor="#1A73E8"
+            android:textColor="@color/link"
             android:textSize="13sp" />
 
         <CheckBox
@@ -81,6 +81,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:background="@drawable/bg_btn_primary"
+            android:backgroundTint="@color/button_bg"
             android:minHeight="48dp"
             android:text="@string/consent_btn_agree"
             android:textAllCaps="false"

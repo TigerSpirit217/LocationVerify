@@ -7,6 +7,7 @@ import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
+import com.tiger.locationverify.R
 import com.tiger.locationverify.data.Prefs
 import com.tiger.locationverify.util.LogSaver
 
@@ -29,51 +30,55 @@ class AmapLocationChecker(private val context: Context) {
 
     private var client: AMapLocationClient? = null
     private var callback: ((CheckReport) -> Unit)? = null
-    private var finished = false
+    private var finished = true
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val listener = AMapLocationListener { location ->
-        if (finished) return@AMapLocationListener
-        finished = true
-        // 回调解析异常兜底：任何字段在特定环境下为 null 都不允许阻断结果上报，
-        // 否则会出现「日志有回调、界面不刷新」的现象。
-        val report = try {
-            if (location == null) {
-                LogSaver.d(TAG, "回调结果为空")
-                error(CheckReport.Status.FAILED, "回调结果为空")
-            } else {
-                LogSaver.d(
-                    TAG, "回调: errorCode=${location.errorCode} errorInfo=${location.errorInfo} " +
-                        "isMock=${location.isMock} type=${location.locationType}"
-                )
-                buildReport(location)
+        mainHandler.post {
+            if (finished) return@post
+            finished = true
+            // 回调解析异常兜底：任何字段在特定环境下为 null 都不允许阻断结果上报，
+            // 否则会出现「日志有回调、界面不刷新」的现象。
+            val report = try {
+                if (location == null) {
+                    LogSaver.d(TAG, context.getString(R.string.text_empty_location_callback))
+                    error(CheckReport.Status.FAILED, context.getString(R.string.text_empty_location_callback))
+                } else {
+                    LogSaver.d(
+                        TAG, context.getString(
+                            R.string.log_amap_callback,
+                            location.errorCode, location.errorInfo, location.isMock, location.locationType
+                        )
+                    )
+                    buildReport(location)
+                }
+            } catch (t: Throwable) {
+                LogSaver.d(TAG, context.getString(R.string.text_failed_to_parse_callback, t))
+                error(CheckReport.Status.FAILED, context.getString(R.string.text_failed_to_parse_location_result, t.message))
             }
-        } catch (t: Throwable) {
-            LogSaver.d(TAG, "解析回调异常: $t")
-            error(CheckReport.Status.FAILED, "解析定位结果异常：${t.message}")
+            deliver(report)
         }
-        deliver(report)
-        release()
     }
 
     private val timeoutRunnable = Runnable {
         if (finished) return@Runnable
         finished = true
-        LogSaver.d(TAG, "定位超时")
-        deliver(error(CheckReport.Status.FAILED, "定位超时（15 秒未回调），请检查网络/定位开关后重试"))
-        release()
+        LogSaver.d(TAG, context.getString(R.string.text_location_timed_out))
+        deliver(error(CheckReport.Status.FAILED, context.getString(R.string.text_location_timed_out_no_callback_within_15)))
     }
 
     fun start(onResult: (CheckReport) -> Unit) {
+        release()
+        finished = false
         callback = onResult
         if (!Prefs.getPrivacyAgreed(context)) {
-            deliver(error(CheckReport.Status.NOT_AGREED, "尚未同意隐私政策，无法使用定位 SDK"))
+            deliver(error(CheckReport.Status.NOT_AGREED, context.getString(R.string.text_privacy_consent_is_required_to_use_location)))
             return
         }
         val key = Prefs.getAmapKey(context)
         if (key.isBlank()) {
             // 允许只填一个 Key：未填写的 SDK 自动跳过，不初始化
-            deliver(error(CheckReport.Status.NO_KEY, "未填写高德 Key，已自动跳过（可在「配置密钥」中补充）"))
+            deliver(error(CheckReport.Status.NO_KEY, context.getString(R.string.text_amap_key_is_missing_skipped_add_it)))
             return
         }
         try {
@@ -99,36 +104,41 @@ class AmapLocationChecker(private val context: Context) {
             finished = false
             mainHandler.postDelayed(timeoutRunnable, TIMEOUT_MS)
             c.startLocation()
-            LogSaver.d(TAG, "开始定位 key=${maskKey(key)}")
+            LogSaver.d(TAG, context.getString(R.string.text_starting_location_key, maskKey(key)))
         } catch (t: Throwable) {
-            LogSaver.d(TAG, "启动异常: $t")
-            deliver(error(CheckReport.Status.FAILED, "高德 SDK 启动异常：${t.message}"))
-            release()
+            LogSaver.d(TAG, context.getString(R.string.text_startup_exception, t))
+            deliver(error(CheckReport.Status.FAILED, context.getString(R.string.text_amap_sdk_startup_failed, t.message)))
         }
     }
 
     fun release() {
-        mainHandler.removeCallbacks(timeoutRunnable)
+        finished = true
+        callback = null
+        mainHandler.removeCallbacksAndMessages(null)
         val c = client ?: return
         client = null
         try {
             c.stopLocation()
             c.onDestroy()
         } catch (t: Throwable) {
-            LogSaver.d(TAG, "释放异常: $t")
+            LogSaver.d(TAG, context.getString(R.string.text_cleanup_exception, t))
         }
     }
 
     // ---------- 私有 ----------
 
     private fun deliver(report: CheckReport) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { deliver(report) }
+            return
+        }
         val cb = callback ?: return
-        val r = Runnable { cb(report) }
-        if (Looper.myLooper() == Looper.getMainLooper()) r.run() else mainHandler.post(r)
+        release()
+        cb(report)
     }
 
     private fun error(status: CheckReport.Status, reason: String) =
-        CheckReport("高德地图定位 SDK", status, emptyList(), RiskLevel.UNKNOWN, reason)
+        CheckReport(context.getString(R.string.text_amap_location_sdk), status, emptyList(), RiskLevel.UNKNOWN, reason)
 
     private fun buildReport(loc: AMapLocation): CheckReport {
         val code = loc.errorCode
@@ -137,63 +147,63 @@ class AmapLocationChecker(private val context: Context) {
         // 这里 mockEnable=true 时一般不会走到 15，但仍兼容处理。
         if (code == 15) {
             return CheckReport(
-                sdkName = "高德地图定位 SDK",
+                sdkName = context.getString(R.string.text_amap_location_sdk),
                 status = CheckReport.Status.SUCCESS,
                 lines = listOf(
-                    "定位结果" to "失败：结果被识别为模拟位置",
-                    "错误码" to "15（定位结果被模拟导致定位失败）",
-                    "错误说明" to (loc.errorInfo ?: "无"),
-                    "详情" to (loc.locationDetail ?: "无")
+                    context.getString(R.string.text_location_result) to context.getString(R.string.text_failed_result_identified_as_a_mock_location),
+                    context.getString(R.string.text_error_code) to context.getString(R.string.text_15_location_failed_because_the_result_was),
+                    context.getString(R.string.text_error_description) to (loc.errorInfo ?: context.getString(R.string.text_none)),
+                    context.getString(R.string.text_details) to (loc.locationDetail ?: context.getString(R.string.text_none))
                 ),
                 risk = RiskLevel.HIGH,
-                riskReason = "高德 SDK 判定本次定位结果为模拟位置（错误码 15）"
+                riskReason = context.getString(R.string.text_amap_sdk_identified_this_result_as_a)
             )
         }
 
         if (code != 0) {
             val lines = mutableListOf<Pair<String, String>>()
-            lines += "错误码" to "$code"
-            lines += "错误说明" to (loc.errorInfo ?: "无")
-            lines += "详情" to (loc.locationDetail ?: "无")
-            errorHint(code)?.let { lines += "排查建议" to it }
+            lines += context.getString(R.string.text_error_code) to "$code"
+            lines += context.getString(R.string.text_error_description) to (loc.errorInfo ?: context.getString(R.string.text_none))
+            lines += context.getString(R.string.text_details) to (loc.locationDetail ?: context.getString(R.string.text_none))
+            errorHint(code)?.let { lines += context.getString(R.string.text_troubleshooting) to it }
             return CheckReport(
-                "高德地图定位 SDK", CheckReport.Status.FAILED, lines,
-                RiskLevel.UNKNOWN, "定位失败（错误码 $code），无法评估虚拟位置风险"
+                context.getString(R.string.text_amap_location_sdk), CheckReport.Status.FAILED, lines,
+                RiskLevel.UNKNOWN, context.getString(R.string.text_location_failed_error_code_mock_location_risk, code)
             )
         }
 
         // ---------- 定位成功 ----------
         val lines = mutableListOf<Pair<String, String>>()
-        lines += "定位结果" to "成功"
+        lines += context.getString(R.string.text_location_result) to context.getString(R.string.text_success)
         // 虚拟位置重点字段
-        lines += "是否模拟位置(isMock)" to if (loc.isMock) "是（疑似虚拟定位）" else "否"
-        lines += "定位来源(类型)" to "${loc.locationType}（${amapTypeLabel(loc.locationType)}）"
-        lines += "定位信息描述" to (loc.locationDetail ?: "无")
-        lines += "经纬度" to "${loc.latitude}, ${loc.longitude}"
-        lines += "定位精度" to "${loc.accuracy} 米"
-        lines += "可信度(trustedLevel)" to trustedLevelLabel(loc.trustedLevel)
-        if (loc.satellites > 0) lines += "卫星数" to "${loc.satellites}"
-        lines += "卫星信号强度" to gpsAccuracyLabel(loc.gpsAccuracyStatus)
-        lines += "地址" to listOf(loc.province, loc.city, loc.district, loc.street, loc.address)
+        lines += context.getString(R.string.text_mock_location_ismock) to if (loc.isMock) context.getString(R.string.text_yes_suspected_mock_location) else context.getString(R.string.text_no)
+        lines += context.getString(R.string.text_location_source_type) to "${loc.locationType}（${amapTypeLabel(loc.locationType)}）"
+        lines += context.getString(R.string.text_location_details) to (loc.locationDetail ?: context.getString(R.string.text_none))
+        lines += context.getString(R.string.text_latitude_longitude) to "${loc.latitude}, ${loc.longitude}"
+        lines += context.getString(R.string.text_accuracy) to context.getString(R.string.text_m, loc.accuracy)
+        lines += context.getString(R.string.text_trust_level_trustedlevel) to trustedLevelLabel(loc.trustedLevel)
+        if (loc.satellites > 0) lines += context.getString(R.string.text_satellite_count) to "${loc.satellites}"
+        lines += context.getString(R.string.text_satellite_signal_strength) to gpsAccuracyLabel(loc.gpsAccuracyStatus)
+        lines += context.getString(R.string.text_address) to listOf(loc.province, loc.city, loc.district, loc.street, loc.address)
             .filter { !it.isNullOrBlank() }
             .joinToString(" ")
-            .ifBlank { "无" }
+            .ifBlank { context.getString(R.string.text_none) }
         loc.poiName?.takeIf { it.isNotBlank() }?.let { lines += "POI" to it }
         loc.aoiName?.takeIf { it.isNotBlank() }?.let { lines += "AOI" to it }
-        if (loc.speed > 0f) lines += "速度" to "${loc.speed} 米/秒"
-        if (loc.bearing > 0f) lines += "方向" to "${loc.bearing}°"
+        if (loc.speed > 0f) lines += context.getString(R.string.text_speed) to context.getString(R.string.text_m_s, loc.speed)
+        if (loc.bearing > 0f) lines += context.getString(R.string.text_bearing) to "${loc.bearing}°"
         // 注意：buildingId/floor 仅在室内定位结果中返回，其余类型可能为 null，必须判空
         val buildingId = loc.buildingId
         if (!buildingId.isNullOrBlank()) {
-            lines += "楼宇" to "$buildingId（楼层 ${loc.floor ?: "未知"}）"
+            lines += context.getString(R.string.text_building) to context.getString(R.string.text_floor, buildingId, loc.floor ?: context.getString(R.string.text_unknown))
         }
 
         val (risk, reason) = if (loc.isMock) {
-            RiskLevel.HIGH to "高德 SDK 标记为模拟位置（isMock=true）"
+            RiskLevel.HIGH to context.getString(R.string.text_amap_sdk_marked_this_result_as_a)
         } else {
-            RiskLevel.LOW to "高德 SDK 未标记为模拟位置"
+            RiskLevel.LOW to context.getString(R.string.text_amap_sdk_did_not_mark_this_result)
         }
-        return CheckReport("高德地图定位 SDK", CheckReport.Status.SUCCESS, lines, risk, reason)
+        return CheckReport(context.getString(R.string.text_amap_location_sdk), CheckReport.Status.SUCCESS, lines, risk, reason)
     }
 
     /**
@@ -203,42 +213,42 @@ class AmapLocationChecker(private val context: Context) {
      * 仅基站 → 6；离线库 → 8；最后位置 → 9；大致位置权限 → 11；高德网络定位失败兜底 → 12。
      */
     private fun amapTypeLabel(t: Int): String = when (t) {
-        0 -> "定位失败"
-        1 -> "GPS(卫星)定位结果"
-        2 -> "前次定位结果"
-        4 -> "缓存定位结果"
-        5 -> "Wifi 定位结果（网络定位）"
-        6 -> "基站定位结果（网络定位）"
-        8 -> "离线定位结果"
-        9 -> "最后位置缓存"
-        11 -> "模糊定位结果（大致位置权限）"
-        12 -> "系统网络定位（高德网络定位失败时的兜底）"
-        else -> "其他类型"
+        0 -> context.getString(R.string.text_location_failed)
+        1 -> context.getString(R.string.text_gps_satellite_location)
+        2 -> context.getString(R.string.text_previous_location_result)
+        4 -> context.getString(R.string.text_cached_location_result)
+        5 -> context.getString(R.string.text_wi_fi_location_network)
+        6 -> context.getString(R.string.text_cell_tower_location_network)
+        8 -> context.getString(R.string.text_offline_location_result)
+        9 -> context.getString(R.string.text_last_known_location)
+        11 -> context.getString(R.string.text_coarse_location_approximate_permission)
+        12 -> context.getString(R.string.text_system_network_location_amap_network_fallback)
+        else -> context.getString(R.string.text_other_type)
     }
 
     /** trustedLevel 官方语义：BAD 级别与模拟定位结果相关 */
     private fun trustedLevelLabel(v: Int): String = when (v) {
-        AMapLocation.TRUSTED_LEVEL_HIGH -> "高（周边信息 15 秒内，实时 GPS）"
-        AMapLocation.TRUSTED_LEVEL_NORMAL -> "中（15 秒~2 分钟，缓存/离线/最后位置）"
-        AMapLocation.TRUSTED_LEVEL_LOW -> "低（2~10 分钟）"
-        AMapLocation.TRUSTED_LEVEL_BAD -> "非常低（>10 分钟；注意：模拟定位结果也为该等级）"
-        else -> "未知（$v）"
+        AMapLocation.TRUSTED_LEVEL_HIGH -> context.getString(R.string.text_high_within_15_seconds_live_gps)
+        AMapLocation.TRUSTED_LEVEL_NORMAL -> context.getString(R.string.text_normal_15_seconds_2_minutes_cached_offline)
+        AMapLocation.TRUSTED_LEVEL_LOW -> context.getString(R.string.text_low_2_10_minutes)
+        AMapLocation.TRUSTED_LEVEL_BAD -> context.getString(R.string.text_very_low_over_10_minutes_also_used)
+        else -> context.getString(R.string.text_unknown_2, v)
     }
 
     private fun gpsAccuracyLabel(v: Int): String = when (v) {
-        AMapLocation.GPS_ACCURACY_BAD -> "弱"
-        AMapLocation.GPS_ACCURACY_GOOD -> "强"
-        AMapLocation.GPS_ACCURACY_UNKNOWN -> "未知"
-        else -> "未知（$v）"
+        AMapLocation.GPS_ACCURACY_BAD -> context.getString(R.string.text_weak)
+        AMapLocation.GPS_ACCURACY_GOOD -> context.getString(R.string.text_strong)
+        AMapLocation.GPS_ACCURACY_UNKNOWN -> context.getString(R.string.text_unknown)
+        else -> context.getString(R.string.text_unknown_2, v)
     }
 
     private fun errorHint(code: Int): String? = when (code) {
-        7 -> "Key 鉴权失败：请检查 Key 与「包名 + 签名 SHA1」是否绑定正确"
-        10 -> "定位客户端启动失败：检查 AndroidManifest 是否声明 APSService 服务"
-        12 -> "缺少定位权限：请在系统设置中授予定位权限（建议精确位置）"
-        13 -> "未获取到 Wi-Fi 列表/基站信息且 GPS 不可用"
-        14 -> "GPS 信号差：请移至开阔地带后重试"
-        20 -> "应用仅获取到「大致位置」权限，请授予精确位置权限"
+        7 -> context.getString(R.string.text_key_authentication_failed_check_package_name_and)
+        10 -> context.getString(R.string.text_location_client_startup_failed_check_the_apsservice)
+        12 -> context.getString(R.string.text_location_permission_is_missing_grant_location_access)
+        13 -> context.getString(R.string.text_wi_fi_cell_data_is_unavailable_and)
+        14 -> context.getString(R.string.text_poor_gps_signal_move_to_an_open)
+        20 -> context.getString(R.string.text_only_approximate_location_access_was_granted_grant)
         else -> null
     }
 }

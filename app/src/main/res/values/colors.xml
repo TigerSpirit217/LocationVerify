@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#2F6BFF</color>
+    <color name="primary">#285FE5</color>
     <color name="primary_dark">#1D4ED8</color>
     <color name="page_bg">#F3F4F6</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="card_border">#E5E7EB</color>
+    <color name="button_bg">#285FE5</color>
+    <color name="text_hint">#6B7280</color>
+    <color name="link">#1565C0</color>
     <color name="text_main">#1F2329</color>
-    <color name="text_sub">#6B7280</color>
+    <color name="text_sub">#5F6672</color>
     <color name="risk_high">#D93025</color>
-    <color name="risk_mid">#C77F00</color>
-    <color name="risk_low">#1E8E3E</color>
+    <color name="risk_mid">#8A5700</color>
+    <color name="risk_low">#187734</color>
     <color name="risk_unknown">#6B7280</color>
 </resources>

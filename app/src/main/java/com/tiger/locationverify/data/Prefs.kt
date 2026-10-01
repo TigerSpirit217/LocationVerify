@@ -4,7 +4,7 @@ import android.content.Context
 
 /**
  * 应用配置与用户密钥的持久化（SharedPreferences）。
- * 两个 SDK 的 Key 均与「包名 + 签名 SHA1」绑定，因此允许用户自行填写。
+ * 用户自行填写三家 SDK 的密钥；百度与高德的 Android Key 需绑定包名与签名。
  */
 object Prefs {
 

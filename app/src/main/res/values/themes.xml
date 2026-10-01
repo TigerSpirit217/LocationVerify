@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LocationVerify" parent="Theme.AppCompat.Light.NoActionBar">
+    <style name="Theme.LocationVerify" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorAccent">@color/primary</item>
-        <item name="android:statusBarColor">@color/primary_dark</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/page_bg</item>
+        <item name="android:colorBackground">@color/page_bg</item>
+        <item name="android:colorBackgroundFloating">@color/card_bg</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="android:textColorLink">@color/link</item>
+        <item name="android:statusBarColor">@color/page_bg</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_system_bars</item>
     </style>
 </resources>
